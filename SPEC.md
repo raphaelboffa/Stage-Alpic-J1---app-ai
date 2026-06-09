@@ -4,7 +4,7 @@
 
 Permettre aux clients de rechercher, comparer et réserver une voiture en langage naturel directement dans ChatGPT. Pain actuel : naviguer entre des menus et filtres sur un site web est lent et impersonnel. Ici, on décrit son besoin en une phrase et l'IA trouve les meilleures options.
 
-**Core actions**: Rechercher une voiture disponible, comparer et réserver, gérer ses réservations.
+**Core actions**: Rechercher une voiture disponible, comparer et réserver, gérer ses réservations, acheter un véhicule d'occasion de la flotte.
 
 ## Why LLM?
 
@@ -68,3 +68,21 @@ Permettre aux clients de rechercher, comparer et réserver une voiture en langag
 **Tool: cancel_reservation**
 - **Input**: `{ reservation_id: string }`
 - **Output**: `{ success: boolean, reservation_id: string }`
+
+### Acheter un véhicule d'occasion de la flotte
+
+1. L'utilisateur décrit son besoin (budget, catégorie, carburant, km max)
+2. Le LLM invoque `browse-resale` avec les paramètres extraits
+3. La vue affiche les véhicules disponibles à la vente (cartes : photo, prix, km, année)
+4. L'utilisateur sélectionne → fiche détail (caractéristiques, historique de location)
+5. L'utilisateur confirme → la vue appelle `buy-vehicle` → confirmation d'achat
+
+**View: browse_resale**
+- **Input**: `{ budget_max?: number, category?: string, fuel?: string, km_max?: number }`
+- **Output**: `{ vehicles[] }`
+- **Views**: liste des véhicules à vendre, détail + confirmation d'achat
+- **Behavior**: gère la sélection localement, appelle `buy_vehicle` pour confirmer
+
+**Tool: buy_vehicle**
+- **Input**: `{ vehicle_id: string }`
+- **Output**: `{ purchase_id, vehicle, price, status: "confirmed" }`

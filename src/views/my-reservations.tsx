@@ -209,10 +209,10 @@ export default function MyReservations() {
                   setViewState((prev) => ({ ...prev, selectedId: res.id }));
                   setScreen("detail");
                 }}
-                className="w-full text-left rounded-2xl border border-border hover:border-primary/50 overflow-hidden transition-all hover:shadow-sm flex"
+                className="w-full text-left rounded-2xl border border-border hover:border-primary/50 overflow-hidden transition-all hover:shadow-sm flex min-h-24"
               >
                 {img && (
-                  <div className="w-24 shrink-0 bg-muted overflow-hidden">
+                  <div className="w-24 h-24 shrink-0 bg-muted overflow-hidden">
                     <img
                       src={img}
                       alt={`${res.car.brand} ${res.car.model}`}

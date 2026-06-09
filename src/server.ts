@@ -81,6 +81,111 @@ const CAR_IMAGES: Record<string, string> = {
   "car-6": "https://images.unsplash.com/photo-1563720223185-11003d516935?w=600&auto=format&fit=crop",
 };
 
+// ── Resale fleet ───────────────────────────────────────────────────────────────
+
+const RESALE_VEHICLES = [
+  {
+    id: "sale-1",
+    brand: "Renault",
+    model: "Clio",
+    category: "Citadine",
+    year: 2021,
+    mileage: 42000,
+    fuel: "Essence",
+    transmission: "Manuelle",
+    price: 9900,
+    color: "Gris Platine",
+    rentalHistory: "3 ans en flotte, entretien complet effectué",
+    features: ["Bluetooth", "Climatisation", "Régulateur de vitesse"],
+  },
+  {
+    id: "sale-2",
+    brand: "Peugeot",
+    model: "2008",
+    category: "SUV",
+    year: 2022,
+    mileage: 31500,
+    fuel: "Hybride",
+    transmission: "Automatique",
+    price: 19500,
+    color: "Blanc Nacré",
+    rentalHistory: "2 ans en flotte, 1 propriétaire",
+    features: ["Bluetooth", "Climatisation", "GPS", "Caméra de recul", "Chargeur sans fil"],
+  },
+  {
+    id: "sale-3",
+    brand: "Volkswagen",
+    model: "Golf",
+    category: "Berline",
+    year: 2020,
+    mileage: 67000,
+    fuel: "Diesel",
+    transmission: "Manuelle",
+    price: 14200,
+    color: "Bleu Horizon",
+    rentalHistory: "4 ans en flotte, carnet d'entretien complet",
+    features: ["Bluetooth", "Climatisation", "GPS"],
+  },
+  {
+    id: "sale-4",
+    brand: "Toyota",
+    model: "C-HR",
+    category: "SUV",
+    year: 2023,
+    mileage: 18000,
+    fuel: "Hybride",
+    transmission: "Automatique",
+    price: 24900,
+    color: "Rouge Intense",
+    rentalHistory: "1 an en flotte, comme neuf",
+    features: ["Bluetooth", "Climatisation", "GPS", "Lane assist", "Caméra 360°"],
+  },
+  {
+    id: "sale-5",
+    brand: "Mercedes",
+    model: "Classe A",
+    category: "Berline Premium",
+    year: 2021,
+    mileage: 38000,
+    fuel: "Essence",
+    transmission: "Automatique",
+    price: 27500,
+    color: "Noir Obsidienne",
+    rentalHistory: "3 ans en flotte premium, entretien Mercedes",
+    features: ["Bluetooth", "Climatisation", "GPS", "Sièges chauffants", "MBUX", "Caméra 360°"],
+  },
+  {
+    id: "sale-6",
+    brand: "Ford",
+    model: "Transit Custom",
+    category: "Utilitaire",
+    year: 2020,
+    mileage: 89000,
+    fuel: "Diesel",
+    transmission: "Manuelle",
+    price: 18900,
+    color: "Blanc Arctic",
+    rentalHistory: "5 ans en flotte utilitaire, révisé",
+    features: ["Bluetooth", "Climatisation", "Attelage", "Grande capacité"],
+  },
+];
+
+const RESALE_IMAGES: Record<string, string> = {
+  "sale-1": "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=600&auto=format&fit=crop",
+  "sale-2": "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=600&auto=format&fit=crop",
+  "sale-3": "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600&auto=format&fit=crop",
+  "sale-4": "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=600&auto=format&fit=crop",
+  "sale-5": "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&auto=format&fit=crop",
+  "sale-6": "https://images.unsplash.com/photo-1563720223185-11003d516935?w=600&auto=format&fit=crop",
+};
+
+const purchasesStore = new Map<string, { id: string; vehicle: (typeof RESALE_VEHICLES)[number]; price: number; created_at: string }>();
+let purchaseCounter = 2000;
+
+function generatePurchaseId(): string {
+  return `ACH-${++purchaseCounter}`;
+}
+
 // ── In-memory reservations store ───────────────────────────────────────────────
 
 interface Reservation {
@@ -486,6 +591,203 @@ const server = new McpServer(
           {
             type: "text",
             text: `Réservation ${reservation_id} annulée avec succès.`,
+          },
+        ],
+      };
+    },
+  )
+  .registerTool(
+    {
+      name: "browse-resale",
+      description:
+        "Browse vehicles available for purchase from the rental fleet. Call this when the user wants to buy a used car, see available vehicles for sale, or explore the resale catalog.",
+      inputSchema: {
+        budget_max: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Maximum budget in euros"),
+        category: z
+          .string()
+          .optional()
+          .describe("Vehicle category: citadine, berline, SUV, utilitaire, premium"),
+        fuel: z
+          .string()
+          .optional()
+          .describe("Fuel type: essence, diesel, hybride, électrique"),
+        km_max: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Maximum mileage in km"),
+      },
+      outputSchema: {
+        total: z.number(),
+        vehicles: z.array(
+          z.object({
+            id: z.string(),
+            brand: z.string(),
+            model: z.string(),
+            category: z.string(),
+            year: z.number(),
+            mileage: z.number(),
+            fuel: z.string(),
+            transmission: z.string(),
+            price: z.number(),
+            color: z.string(),
+            rentalHistory: z.string(),
+          }),
+        ),
+      },
+      annotations: {
+        title: "Véhicules disponibles à la vente",
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      _meta: {
+        "openai/toolInvocation/invoking": "Recherche des véhicules disponibles…",
+        "openai/toolInvocation/invoked": "Catalogue chargé.",
+      },
+      view: {
+        component: "browse-resale",
+        domain: "https://skybridge.tech",
+        description: "Véhicules de la flotte disponibles à la vente",
+        csp: {
+          resourceDomains: [
+            "https://images.unsplash.com",
+            "https://fonts.googleapis.com",
+            "https://fonts.gstatic.com",
+          ],
+        },
+      },
+    },
+    async ({ budget_max, category, fuel, km_max }) => {
+      let filtered = RESALE_VEHICLES;
+
+      if (budget_max) {
+        filtered = filtered.filter((v) => v.price <= budget_max);
+      }
+      if (category) {
+        const term = category.toLowerCase();
+        filtered = filtered.filter(
+          (v) =>
+            v.category.toLowerCase().includes(term) ||
+            v.model.toLowerCase().includes(term),
+        );
+        if (filtered.length === 0) filtered = RESALE_VEHICLES;
+      }
+      if (fuel) {
+        const term = fuel.toLowerCase();
+        filtered = filtered.filter((v) =>
+          v.fuel.toLowerCase().includes(term),
+        );
+        if (filtered.length === 0) filtered = RESALE_VEHICLES;
+      }
+      if (km_max) {
+        filtered = filtered.filter((v) => v.mileage <= km_max);
+      }
+
+      const structuredContent = {
+        total: filtered.length,
+        vehicles: filtered.map(
+          ({ id, brand, model, category, year, mileage, fuel, transmission, price, color, rentalHistory }) => ({
+            id, brand, model, category, year, mileage, fuel, transmission, price, color, rentalHistory,
+          }),
+        ),
+      };
+
+      const _meta = {
+        images: Object.fromEntries(filtered.map((v) => [v.id, RESALE_IMAGES[v.id]])),
+        features: Object.fromEntries(filtered.map((v) => [v.id, v.features])),
+      };
+
+      return {
+        structuredContent,
+        content: [
+          {
+            type: "text",
+            text: `${filtered.length} véhicule(s) disponible(s) à la vente.`,
+          },
+        ],
+        _meta,
+      };
+    },
+  )
+  .registerTool(
+    {
+      name: "buy-vehicle",
+      description: "Confirm the purchase of a resale vehicle from the fleet.",
+      inputSchema: {
+        vehicle_id: z.string().min(1).describe("The resale vehicle ID to purchase"),
+      },
+      outputSchema: {
+        purchase_id: z.string(),
+        vehicle: z.object({
+          id: z.string(),
+          brand: z.string(),
+          model: z.string(),
+          category: z.string(),
+          year: z.number(),
+          mileage: z.number(),
+          price: z.number(),
+        }),
+        price: z.number(),
+        status: z.literal("confirmed"),
+      },
+      annotations: {
+        title: "Confirmer l'achat",
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      _meta: {
+        "openai/toolInvocation/invoking": "Confirmation de l'achat…",
+        "openai/toolInvocation/invoked": "Achat confirmé.",
+      },
+    },
+    async ({ vehicle_id }) => {
+      const vehicle = RESALE_VEHICLES.find((v) => v.id === vehicle_id);
+      if (!vehicle) {
+        return {
+          structuredContent: {
+            purchase_id: "",
+            vehicle: { id: "", brand: "", model: "", category: "", year: 0, mileage: 0, price: 0 },
+            price: 0,
+            status: "confirmed" as const,
+          },
+          content: [{ type: "text", text: "Véhicule introuvable." }],
+          isError: true,
+        };
+      }
+
+      const purchase = {
+        id: generatePurchaseId(),
+        vehicle,
+        price: vehicle.price,
+        created_at: new Date().toISOString(),
+      };
+      purchasesStore.set(purchase.id, purchase);
+
+      return {
+        structuredContent: {
+          purchase_id: purchase.id,
+          vehicle: {
+            id: vehicle.id,
+            brand: vehicle.brand,
+            model: vehicle.model,
+            category: vehicle.category,
+            year: vehicle.year,
+            mileage: vehicle.mileage,
+            price: vehicle.price,
+          },
+          price: vehicle.price,
+          status: "confirmed" as const,
+        },
+        content: [
+          {
+            type: "text",
+            text: `Achat ${purchase.id} confirmé : ${vehicle.brand} ${vehicle.model} ${vehicle.year} pour ${vehicle.price.toLocaleString("fr-FR")}€.`,
           },
         ],
       };
