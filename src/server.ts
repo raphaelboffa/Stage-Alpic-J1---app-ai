@@ -72,6 +72,16 @@ const CARS = [
   },
 ];
 
+// Recognized filter values for input validation (lowercased).
+const VEHICLE_TYPES = [
+  "citadine",
+  "berline",
+  "suv",
+  "monospace",
+  "premium",
+  "berline premium",
+];
+
 const CAR_IMAGES: Record<string, string> = {
   "car-1": "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=600&auto=format&fit=crop",
   "car-2": "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600&auto=format&fit=crop",
@@ -169,6 +179,18 @@ const RESALE_VEHICLES = [
     features: ["Bluetooth", "Climatisation", "Attelage", "Grande capacité"],
   },
 ];
+
+// Recognized filter values for input validation (lowercased).
+const RESALE_CATEGORIES = [
+  "citadine",
+  "berline",
+  "suv",
+  "monospace",
+  "utilitaire",
+  "premium",
+  "berline premium",
+];
+const FUEL_TYPES = ["essence", "diesel", "hybride", "électrique", "electrique"];
 
 const RESALE_IMAGES: Record<string, string> = {
   "sale-1": "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=600&auto=format&fit=crop",
@@ -272,7 +294,6 @@ const server = new McpServer(
       },
       view: {
         component: "search-cars",
-        domain: "https://skybridge.tech",
         description: "Résultats de recherche de voitures",
         csp: {
           resourceDomains: [
@@ -305,14 +326,33 @@ const server = new McpServer(
 
       let filtered = CARS;
       if (vehicle_type) {
-        const term = vehicle_type.toLowerCase();
-        filtered = CARS.filter(
+        const term = vehicle_type.trim().toLowerCase();
+        const matches = CARS.filter(
           (c) =>
             c.category.toLowerCase().includes(term) ||
             c.model.toLowerCase().includes(term) ||
             c.brand.toLowerCase().includes(term),
         );
-        if (filtered.length === 0) filtered = CARS;
+        const isKnownType = VEHICLE_TYPES.includes(term);
+        if (!isKnownType && matches.length === 0) {
+          return {
+            structuredContent: {
+              city,
+              pickup_date,
+              return_date,
+              days: 0,
+              cars: [],
+            },
+            content: [
+              {
+                type: "text",
+                text: `Type de véhicule non reconnu : « ${vehicle_type} ». Types disponibles : citadine, berline, SUV, monospace, premium.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        filtered = matches.length > 0 ? matches : CARS;
       }
 
       const days = calculateDays(pickup_date, return_date);
@@ -500,7 +540,6 @@ const server = new McpServer(
       },
       view: {
         component: "my-reservations",
-        domain: "https://skybridge.tech",
         description: "Mes réservations de voitures",
         csp: {
           resourceDomains: [
@@ -651,7 +690,6 @@ const server = new McpServer(
       },
       view: {
         component: "browse-resale",
-        domain: "https://skybridge.tech",
         description: "Véhicules de la flotte disponibles à la vente",
         csp: {
           resourceDomains: [
@@ -663,26 +701,65 @@ const server = new McpServer(
       },
     },
     async ({ budget_max, category, fuel, km_max }) => {
+      if (category) {
+        const term = category.trim().toLowerCase();
+        const isKnown =
+          RESALE_CATEGORIES.includes(term) ||
+          RESALE_VEHICLES.some(
+            (v) =>
+              v.category.toLowerCase().includes(term) ||
+              v.model.toLowerCase().includes(term),
+          );
+        if (!isKnown) {
+          return {
+            structuredContent: { total: 0, vehicles: [] },
+            content: [
+              {
+                type: "text",
+                text: `Catégorie non reconnue : « ${category} ». Catégories disponibles : citadine, berline, SUV, utilitaire, premium.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+      if (fuel) {
+        const term = fuel.trim().toLowerCase();
+        const isKnown =
+          FUEL_TYPES.includes(term) ||
+          RESALE_VEHICLES.some((v) => v.fuel.toLowerCase().includes(term));
+        if (!isKnown) {
+          return {
+            structuredContent: { total: 0, vehicles: [] },
+            content: [
+              {
+                type: "text",
+                text: `Type de carburant non reconnu : « ${fuel} ». Carburants disponibles : essence, diesel, hybride, électrique.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
       let filtered = RESALE_VEHICLES;
 
       if (budget_max) {
         filtered = filtered.filter((v) => v.price <= budget_max);
       }
       if (category) {
-        const term = category.toLowerCase();
+        const term = category.trim().toLowerCase();
         filtered = filtered.filter(
           (v) =>
             v.category.toLowerCase().includes(term) ||
             v.model.toLowerCase().includes(term),
         );
-        if (filtered.length === 0) filtered = RESALE_VEHICLES;
       }
       if (fuel) {
-        const term = fuel.toLowerCase();
+        const term = fuel.trim().toLowerCase();
         filtered = filtered.filter((v) =>
           v.fuel.toLowerCase().includes(term),
         );
-        if (filtered.length === 0) filtered = RESALE_VEHICLES;
       }
       if (km_max) {
         filtered = filtered.filter((v) => v.mileage <= km_max);
